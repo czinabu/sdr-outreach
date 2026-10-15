@@ -35,7 +35,20 @@ On Windows:
    ```
 4. Run `npm start` again. The terminal should say it is drafting with the local model.
 
-Any server with an OpenAI-compatible chat API also works, such as LM Studio or Open WebUI. For Open WebUI, set `LOCAL_AI_URL=http://localhost:3000/api`, set `LOCAL_AI_MODEL` to a model name from its model picker, and set `LOCAL_AI_API_KEY` to a key from Open WebUI's Settings > Account.
+### LM Studio instead of Ollama
+
+1. In LM Studio, download and load a chat model (around 7–8B, such as Llama 3.1 8B Instruct or Qwen 2.5 7B Instruct).
+2. Open the **Developer** tab and start the local server. It runs at `http://localhost:1234`.
+3. Copy the model's identifier from that tab and put it in `.env`:
+   ```
+   AI_PROVIDER=local
+   LOCAL_AI_URL=http://localhost:1234/v1
+   LOCAL_AI_MODEL=qwen2.5-7b-instruct
+   ```
+
+### Other servers
+
+Any server with an OpenAI-compatible chat API also works. For Open WebUI, set `LOCAL_AI_URL=http://localhost:3000/api`, set `LOCAL_AI_MODEL` to a model name from its model picker, and set `LOCAL_AI_API_KEY` to a key from Open WebUI's Settings > Account.
 
 ## Develop
 
