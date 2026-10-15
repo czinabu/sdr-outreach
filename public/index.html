@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDR Outreach</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>SDR Outreach</h1>
+    <label class="toggle">
+      <input type="checkbox" id="guide-mode" checked>
+      <span>Guide me</span>
+    </label>
+  </header>
+
+  <main>
+    <section class="card guide" data-guide>
+      <h2>How this works</h2>
+      <p>Most first-touch outreach goes out on three channels: a LinkedIn connection request, a short email, and a phone call. Fill in what you know about one person, and you'll get a draft for each channel with a note on why it's written that way.</p>
+      <p>You send everything yourself. Nothing here posts, emails or dials for you.</p>
+    </section>
+
+    <form id="prospect-form" class="card">
+      <h2>About you</h2>
+      <div class="row">
+        <label>Your name
+          <input name="yourName" required autocomplete="name">
+        </label>
+        <label>Tone
+          <select name="tone">
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+            <option value="direct">Direct</option>
+          </select>
+        </label>
+      </div>
+      <label>What you sell
+        <textarea name="yourOffer" rows="2" required placeholder="e.g. Scheduling software that cuts no-shows for dental offices"></textarea>
+        <small data-guide>One sentence on the problem you solve and who you solve it for. Skip the feature list.</small>
+      </label>
+      <label>Goal
+        <input name="goal" value="Book a 15-minute intro call">
+        <small data-guide>The single next step you want. Smaller asks get more replies.</small>
+      </label>
+
+      <h2>About the prospect</h2>
+      <div class="row">
+        <label>Name
+          <input name="prospectName" required>
+        </label>
+        <label>Job title
+          <input name="prospectTitle" required>
+        </label>
+      </div>
+      <div class="row">
+        <label>Company
+          <input name="company" required>
+        </label>
+        <label>Industry <span class="optional">(optional)</span>
+          <input name="industry">
+        </label>
+      </div>
+      <label>What you know about them <span class="optional">(optional)</span>
+        <textarea name="notes" rows="3" placeholder="e.g. Posted last week about hiring three new hygienists. Company just opened a second location."></textarea>
+        <small data-guide>Check their LinkedIn profile, recent posts and the company's news page. One real detail beats a paragraph of generic praise. If you have nothing yet, leave it blank and you'll get research ideas.</small>
+      </label>
+
+      <button type="submit" id="submit">Draft my outreach</button>
+      <p id="error" class="error" hidden></p>
+    </form>
+
+    <section id="results" hidden>
+      <article class="card">
+        <h2>LinkedIn</h2>
+        <h3>Connection request note</h3>
+        <div class="draft" id="linkedin-note"></div>
+        <p class="meta" id="linkedin-count"></p>
+        <h3>Message after they accept</h3>
+        <div class="draft" id="linkedin-followup"></div>
+        <p class="why" data-guide id="linkedin-why"></p>
+      </article>
+
+      <article class="card">
+        <h2>Email</h2>
+        <h3>Subject</h3>
+        <div class="draft" id="email-subject"></div>
+        <h3>Body</h3>
+        <div class="draft" id="email-body"></div>
+        <p class="why" data-guide id="email-why"></p>
+      </article>
+
+      <article class="card">
+        <h2>Phone</h2>
+        <h3>Opener</h3>
+        <div class="draft" id="phone-opener"></div>
+        <h3>If they're open to talking, ask</h3>
+        <ul id="phone-questions"></ul>
+        <h3>Voicemail</h3>
+        <div class="draft" id="phone-voicemail"></div>
+        <p class="why" data-guide id="phone-why"></p>
+      </article>
+
+      <article class="card">
+        <h2>Research to make this more personal</h2>
+        <ul id="research"></ul>
+      </article>
+
+      <article class="card guide" data-guide>
+        <h2>What to do next</h2>
+        <ol>
+          <li>Send the LinkedIn connection request today.</li>
+          <li>Send the email the same day or the next morning.</li>
+          <li>Call a day or two later. If you get voicemail, leave the voicemail script.</li>
+          <li>When they accept on LinkedIn, send the follow-up message.</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

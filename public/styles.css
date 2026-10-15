@@ -1,0 +1,133 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5d6877;
+  --border: #dde2e8;
+  --accent: #2557d6;
+  --accent-text: #ffffff;
+  --guide-bg: #eef3ff;
+  --error: #b42318;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b2129;
+    --text: #e6e9ee;
+    --muted: #9aa4b2;
+    --border: #2d3540;
+    --accent: #6e95ff;
+    --accent-text: #0b1020;
+    --guide-bg: #1c2740;
+    --error: #ff8a80;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px 16px 8px;
+}
+
+h1 { font-size: 1.4rem; margin: 0; }
+h2 { font-size: 1.1rem; margin: 0 0 12px; }
+h3 { font-size: 0.85rem; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+main { max-width: 760px; margin: 0 auto; padding: 0 16px 48px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.card.guide { background: var(--guide-bg); }
+.card.guide p { margin: 0 0 8px; }
+
+form h2:not(:first-child) { margin-top: 24px; }
+
+label { display: block; margin-bottom: 14px; font-weight: 600; font-size: 0.95rem; }
+.optional { font-weight: 400; color: var(--muted); }
+
+input, select, textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 10px;
+  font: inherit;
+  font-weight: 400;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+small { display: block; margin-top: 4px; font-weight: 400; color: var(--muted); }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#submit {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+#submit:disabled { opacity: 0.6; cursor: wait; }
+
+.draft {
+  white-space: pre-wrap;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.copy {
+  margin-top: 6px;
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+
+.why {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  background: var(--guide-bg);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+.why::before { content: "Why it works: "; font-weight: 600; }
+
+.meta { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+.error { color: var(--error); margin: 12px 0 0; }
+
+.toggle { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; }
+.toggle input { width: auto; margin: 0; }
+
+.no-guide [data-guide] { display: none; }
