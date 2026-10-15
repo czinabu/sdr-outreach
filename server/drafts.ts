@@ -42,7 +42,7 @@ export const OutreachDrafts = z.object({
 });
 export type OutreachDrafts = z.infer<typeof OutreachDrafts>;
 
-const SYSTEM_PROMPT = `You are an experienced sales development coach helping an SDR write first-touch outreach.
+export const SYSTEM_PROMPT = `You are an experienced sales development coach helping an SDR write first-touch outreach.
 The SDR may be brand new to prospecting, so every draft must be ready to send as written, and each "why" note should teach one principle in plain words (no jargon such as "pattern interrupt" without explaining it).
 
 Write like a real person, not a marketer:
@@ -68,9 +68,34 @@ export function buildUserPrompt(input: ProspectInput): string {
     .join("\n");
 }
 
-export class DraftRefusedError extends Error {}
+/** Shown to the user as-is: the drafting request failed in a way they can act on. */
+export class DraftError extends Error {
+  status: number;
+  constructor(message: string, status = 502) {
+    super(message);
+    this.status = status;
+  }
+}
 
-export async function generateDrafts(client: Anthropic, input: ProspectInput): Promise<OutreachDrafts> {
+export type DraftGenerator = (input: ProspectInput) => Promise<OutreachDrafts>;
+
+export function claudeGenerator(client: Anthropic): DraftGenerator {
+  return async (input) => {
+    try {
+      return await generateWithClaude(client, input);
+    } catch (error) {
+      if (error instanceof Anthropic.AuthenticationError) {
+        throw new DraftError("The Anthropic API key is missing or invalid. Check ANTHROPIC_API_KEY in your .env file.", 500);
+      }
+      if (error instanceof Anthropic.RateLimitError) {
+        throw new DraftError("Too many requests right now. Wait a minute and try again.", 429);
+      }
+      throw error;
+    }
+  };
+}
+
+async function generateWithClaude(client: Anthropic, input: ProspectInput): Promise<OutreachDrafts> {
   const response = await client.beta.messages.parse({
     model: "claude-opus-5-5",
     max_tokens: 16000,
@@ -82,7 +107,7 @@ export async function generateDrafts(client: Anthropic, input: ProspectInput): P
   });
 
   if (response.stop_reason === "refusal") {
-    throw new DraftRefusedError("Claude declined to write this outreach. Try rewording the notes or offer.");
+    throw new DraftError("Claude declined to write this outreach. Try rewording the notes or offer.", 422);
   }
   if (!response.parsed_output) {
     throw new Error(`Claude returned no usable drafts (stop reason: ${response.stop_reason})`);

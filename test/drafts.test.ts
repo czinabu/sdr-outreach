@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import { createApp } from "../server/app.ts";
-import { buildUserPrompt, type OutreachDrafts } from "../server/drafts.ts";
+import { buildUserPrompt, claudeGenerator, type OutreachDrafts } from "../server/drafts.ts";
 
 const sampleDrafts: OutreachDrafts = {
   linkedin: { connectionNote: "Hi Dana", followUpMessage: "Thanks for connecting", why: "Short and specific." },
@@ -40,7 +40,7 @@ let server: ReturnType<ReturnType<typeof createApp>["listen"]>;
 let baseUrl: string;
 
 before(async () => {
-  server = createApp(fakeClient).listen(0);
+  server = createApp(claudeGenerator(fakeClient)).listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
