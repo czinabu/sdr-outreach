@@ -16,7 +16,9 @@ cp .env.example .env   # then paste your key after ANTHROPIC_API_KEY=
 npm start
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3005.
+
+If something else already uses port 3005, set `PORT` in `.env` to another free number (for example `PORT=3010`) and open that port instead. The app runs on 3005 rather than 3000 because tools like Open WebUI often take 3000.
 
 ## Develop
 
