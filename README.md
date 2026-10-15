@@ -8,7 +8,7 @@ Nothing is sent for you. You copy each draft and send it from your own accounts.
 
 ## Run it
 
-You need Node.js 22.18 or newer and an Anthropic API key.
+You need Node.js 22.18 or newer (`.nvmrc` pins 22) and an Anthropic API key.
 
 ```bash
 npm install
@@ -24,6 +24,8 @@ Open http://localhost:3000.
 npm test         # API and prompt tests (no API key needed)
 npm run typecheck
 ```
+
+GitHub Actions runs both on every pull request and on pushes to `main`.
 
 - `server/drafts.ts` holds the prompt, the output schema and the Claude call.
 - `server/app.ts` is the Express server with the `/api/drafts` endpoint.
