@@ -4,6 +4,7 @@ import { DraftError, type OutreachDrafts, type ProspectInput } from "../server/d
 import { localModelGenerator } from "../server/local.ts";
 
 const drafts: OutreachDrafts = {
+  websiteHook: "",
   linkedin: { connectionNote: "Hi Dana", followUpMessage: "Thanks for connecting", why: "Short." },
   email: { subject: "Second location", body: "Hi Dana,", why: "Specific." },
   phone: { opener: "Hi Dana", discoveryQuestions: ["How do you handle no-shows?"], voicemail: "Hi Dana", why: "Polite." },
@@ -20,6 +21,7 @@ const input: ProspectInput = {
   yourOffer: "Scheduling software",
   goal: "Book a call",
   tone: "friendly",
+  companyWebsite: "",
 };
 
 const config = { baseUrl: "http://localhost:11434/v1/", model: "llama3.1:8b", apiKey: "secret" };

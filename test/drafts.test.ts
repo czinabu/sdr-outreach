@@ -4,8 +4,10 @@ import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import { createApp } from "../server/app.ts";
 import { buildUserPrompt, claudeGenerator, type OutreachDrafts } from "../server/drafts.ts";
+import { WebsiteError } from "../server/website.ts";
 
 const sampleDrafts: OutreachDrafts = {
+  websiteHook: "",
   linkedin: { connectionNote: "Hi Dana", followUpMessage: "Thanks for connecting", why: "Short and specific." },
   email: { subject: "Second location", body: "Hi Dana,", why: "Leads with their news." },
   phone: { opener: "Hi Dana, it's Caleb", discoveryQuestions: ["How do you handle no-shows?"], voicemail: "Hi Dana", why: "Asks permission." },
@@ -26,6 +28,16 @@ const fakeClient = {
   },
 } as unknown as Anthropic;
 
+const fakeReadWebsite = async (url: string) => {
+  if (url.includes("down")) throw new WebsiteError("Couldn't reach down.example.");
+  return "Bright Smiles just opened a second location in Austin.";
+};
+
+function promptSent(): string {
+  const messages = lastParams?.messages as { content: string }[];
+  return messages[0].content;
+}
+
 const validBody = {
   prospectName: "Dana Lee",
   prospectTitle: "Office Manager",
@@ -40,7 +52,7 @@ let server: ReturnType<ReturnType<typeof createApp>["listen"]>;
 let baseUrl: string;
 
 before(async () => {
-  server = createApp(claudeGenerator(fakeClient)).listen(0);
+  server = createApp(claudeGenerator(fakeClient), fakeReadWebsite).listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -84,7 +96,25 @@ test("serves the page", async () => {
 });
 
 test("prompt falls back gracefully when notes are empty", () => {
-  const prompt = buildUserPrompt({ ...validBody, industry: "", notes: "", goal: "Book a call", tone: "direct" });
+  const prompt = buildUserPrompt({ ...validBody, industry: "", notes: "", goal: "Book a call", tone: "direct", companyWebsite: "" });
   assert.match(prompt, /nothing beyond their name, title and company/);
   assert.doesNotMatch(prompt, /Industry:/);
+});
+
+test("uses the company website as a soft opener source", async () => {
+  nextResponse = { stop_reason: "end_turn", parsed_output: sampleDrafts };
+  const response = await postDrafts({ ...validBody, companyWebsite: "brightsmiles.example" });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).websiteNote, undefined);
+  assert.match(promptSent(), /<website>\nBright Smiles just opened a second location in Austin\.\n<\/website>/);
+});
+
+test("still drafts when the website can't be read", async () => {
+  nextResponse = { stop_reason: "end_turn", parsed_output: sampleDrafts };
+  const response = await postDrafts({ ...validBody, companyWebsite: "down.example" });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.linkedin.connectionNote, "Hi Dana");
+  assert.match(body.websiteNote, /Couldn't reach down\.example\. These drafts don't use the website/);
+  assert.doesNotMatch(promptSent(), /<website>/);
 });

@@ -62,6 +62,10 @@
           <input name="industry">
         </label>
       </div>
+      <label>Company website <span class="optional">(optional)</span>
+        <input name="companyWebsite" type="text" inputmode="url" placeholder="e.g. brightsmilesdental.com or a link to their news page">
+        <small data-guide>The app reads this page and opens your LinkedIn note and email with something relevant from it, like news or a new product. A news, blog or "about" page usually gives a better opener than the home page.</small>
+      </label>
       <label>What you know about them <span class="optional">(optional)</span>
         <textarea name="notes" rows="3" placeholder="e.g. Posted last week about hiring three new hygienists. Company just opened a second location."></textarea>
         <small data-guide>Check their LinkedIn profile, recent posts and the company's news page. One real detail beats a paragraph of generic praise. If you have nothing yet, leave it blank and you'll get research ideas.</small>
@@ -72,6 +76,8 @@
     </form>
 
     <section id="results" hidden>
+      <p class="notice" id="website-note" hidden></p>
+      <p class="notice hook" id="website-hook" hidden></p>
       <article class="card">
         <h2>LinkedIn</h2>
         <h3>Connection request note</h3>

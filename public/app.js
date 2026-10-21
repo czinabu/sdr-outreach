@@ -67,7 +67,15 @@ function addCopyButtons() {
   }
 }
 
+function showNotice(id, text) {
+  const notice = document.getElementById(id);
+  notice.textContent = text ?? "";
+  notice.hidden = !text;
+}
+
 function render(drafts) {
+  showNotice("website-note", drafts.websiteNote);
+  showNotice("website-hook", !drafts.websiteNote && drafts.websiteHook && `Opener based on their website: ${drafts.websiteHook}`);
   setText("linkedin-note", drafts.linkedin.connectionNote);
   const length = drafts.linkedin.connectionNote.length;
   setText("linkedin-count", `${length} / 300 characters${length > 300 ? ". Trim this before sending." : ""}`);
