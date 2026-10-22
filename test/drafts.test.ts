@@ -141,7 +141,8 @@ test("free-text industries get the general cadence and no playbook", async () =>
 
 test("lists industries for the picker", async () => {
   const industries = await (await fetch(`${baseUrl}/api/industries`)).json();
-  assert.deepEqual(industries[0], { key: "general", label: "General / not sure" });
+  assert.deepEqual(industries[0].label, "General / not sure");
+  assert.match(industries[0].angles, /one concrete outcome/);
   assert.ok(industries.some((i: { key: string }) => i.key === "manufacturing"));
 });
 

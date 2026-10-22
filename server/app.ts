@@ -15,7 +15,7 @@ export function createApp(generateDrafts: DraftGenerator, fetchWebsite: typeof r
   app.use(express.static(publicDir));
 
   app.get("/api/industries", (_req, res) => {
-    res.json(Object.entries(PLAYBOOKS).map(([key, playbook]) => ({ key, label: playbook.label })));
+    res.json(Object.entries(PLAYBOOKS).map(([key, playbook]) => ({ key, label: playbook.label, angles: playbook.angles })));
   });
 
   app.post("/api/drafts", async (req, res) => {

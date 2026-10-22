@@ -2,9 +2,12 @@
 
 A tool to help SDRs write first-touch outreach for LinkedIn, email and phone, whether you're new to prospecting or have done it for years.
 
-Enter one prospect and what you sell, and AI (Claude, or a free model on your own computer) drafts a LinkedIn connection note and follow-up, a cold email, and a phone opener with discovery questions and a voicemail. **Guide me** mode (on by default) explains why each draft works, adds tips to the form, and lists what to do next. Turn it off in the top corner to see only the drafts.
+Enter one prospect and what you sell, and AI (Claude, or a free model on your own computer) drafts a LinkedIn connection note and follow-up, a cold email, and a phone opener with discovery questions and a voicemail.
 
-Add the company's website and the app reads that page, then opens the LinkedIn note and email with something relevant from it, such as news, a launch or an expansion. If the site can't be read, you still get drafts, with a note saying the website wasn't used.
+- **Industry playbooks:** pick the prospect's industry (software, healthcare, manufacturing, finance, real estate, professional services, retail, education, construction, local business) and the drafts use the angles and wording that work in that market, plus a day-by-day follow-up sequence across LinkedIn, email and phone.
+- **Research-backed drafting rules:** short, plain-text emails with one low-pressure question, pitch-free LinkedIn notes, and phone openers that admit it's a cold call and ask for 30 seconds, following published data from Gong and Reply.io.
+- **Context:** add the company's website and the opener mentions something relevant from it. You can also attach a PDF or text file (a case study, pricing sheet or call notes) and say what it is. If a site or file can't be read, you still get drafts, with a note saying it wasn't used.
+- **Guide me** mode adds tips under each channel, common objections and how to answer them, and explains why each draft works.
 
 Nothing is sent for you. You copy each draft and send it from your own accounts.
 
@@ -47,6 +50,7 @@ On Windows:
    LOCAL_AI_URL=http://localhost:1234/v1
    LOCAL_AI_MODEL=qwen2.5-7b-instruct
    ```
+4. When loading the model, set its context length to at least 8192. With a website and a file attached, the prompt plus the drafts can go past LM Studio's 4096 default.
 
 ### Other servers
 
@@ -63,6 +67,8 @@ GitHub Actions runs both on every pull request and on pushes to `main`.
 
 - `server/drafts.ts` holds the prompt, the output schema and the Claude call.
 - `server/local.ts` calls a local or self-hosted model over the OpenAI chat completions API.
+- `server/playbooks.ts` holds the industry playbooks and follow-up sequences.
+- `server/attachment.ts` reads text out of attached PDFs and text files.
 - `server/website.ts` fetches a company web page and pulls out its readable text.
 - `server/app.ts` is the Express server with the `/api/drafts` endpoint.
 - `public/` is the page itself (plain HTML, CSS and JavaScript).
