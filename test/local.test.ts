@@ -22,6 +22,7 @@ const input: ProspectInput = {
   goal: "Book a call",
   tone: "friendly",
   companyWebsite: "",
+  attachmentDescription: "",
 };
 
 const config = { baseUrl: "http://localhost:11434/v1/", model: "llama3.1:8b", apiKey: "secret" };

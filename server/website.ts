@@ -2,7 +2,7 @@
 export class WebsiteError extends Error {}
 
 // Enough for a model to find a hook, and small enough for local models with short context windows.
-const MAX_TEXT_CHARS = 3000;
+const MAX_TEXT_CHARS = 2500;
 const MAX_HTML_BYTES = 2_000_000;
 const TIMEOUT_MS = 10_000;
 
