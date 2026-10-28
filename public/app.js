@@ -136,11 +136,19 @@ function updateIndustryTip() {
 
 async function loadIndustries() {
   try {
-    const industries = await (await fetch("/api/industries")).json();
+    const response = await fetch("/api/industries");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const industries = await response.json();
     industrySelect.replaceChildren(...industries.map(({ key, label }) => new Option(label, key)));
     industryAngles = Object.fromEntries(industries.map(({ key, angles }) => [key, angles]));
+    return true;
   } catch {
-    // Keep the default "General" option if the list can't load.
+    // Usually the server is still running older code after an update; keep "General" and say how to fix it.
+    industryTip.removeAttribute("data-guide");
+    industryTip.classList.add("warn");
+    industryTip.textContent =
+      "Couldn't load the industry list. If you just updated the app, stop it with Ctrl+C, run npm install and npm start, then refresh this page.";
+    return false;
   }
 }
 
@@ -150,14 +158,16 @@ function updateAboutYouSummary() {
   document.getElementById("about-you-summary").textContent = name && offer ? `${name} · ${offer}` : "";
 }
 
-await loadIndustries();
+const industriesLoaded = await loadIndustries();
 for (const name of SAVED_FIELDS) {
   const saved = load(`sdr-outreach:${name}`);
   if (saved !== null) form.elements[name].value = saved;
 }
 updateAboutYouSummary();
-updateIndustryTip();
-industrySelect.addEventListener("change", updateIndustryTip);
+if (industriesLoaded) {
+  updateIndustryTip();
+  industrySelect.addEventListener("change", updateIndustryTip);
+}
 // Returning users already filled in "About you", so tuck it away.
 if (form.elements.yourName.value && form.elements.yourOffer.value) document.getElementById("about-you").open = false;
 form.elements.yourName.addEventListener("input", updateAboutYouSummary);
