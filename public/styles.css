@@ -176,6 +176,7 @@ textarea { resize: vertical; }
 
 small { display: block; margin-top: 4px; font-weight: 400; color: var(--muted); font-size: 0.82rem; }
 .industry-tip { margin: -6px 0 14px; padding: 8px 10px; background: var(--guide-bg); border-radius: 8px; color: var(--text); }
+.industry-tip.warn { background: var(--warn-soft); color: var(--warn); }
 .saved-hint { margin: -4px 0 12px; font-size: 0.8rem; color: var(--muted); }
 
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
