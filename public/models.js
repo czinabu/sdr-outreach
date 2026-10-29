@@ -22,77 +22,65 @@ const SERVERS = {
   },
 };
 
-// Rough guidance for small sales drafts. Sizes are the 4-bit downloads; speeds vary a lot between machines.
+// Models that fit each kind of computer, best fit first. Sizes are the 4-bit downloads from the Ollama library
+// (October 2026); speeds are rough and vary a lot between machines. Qwen models think before they answer by default,
+// which makes a set of drafts slower but often better.
+const MODELS = {
+  qwen35_4b: { name: "Qwen 3.5 4B", size: "about 3.5 GB", search: "qwen3.5 4b", ollama: "qwen3.5:4b", note: "The strongest small model. Follows the drafting format well for its size." },
+  qwen35_9b: { name: "Qwen 3.5 9B", size: "about 6.5 GB", search: "qwen3.5 9b", ollama: "qwen3.5:9b", note: "A strong all-rounder that reads websites and files well." },
+  qwen35_35b: { name: "Qwen 3.5 35B A3B", size: "about 22 GB", search: "qwen3.5 35b a3b", ollama: "qwen3.5:35b-a3b", note: "Large but quick: it only uses a small part of the model for each word." },
+  qwen38_27b: { name: "Qwen 3.8 27B", size: "about 18 GB", search: "qwen3.8 27b", ollama: "qwen3.8:27b", note: "The newest Qwen and one of the best models you can run at home." },
+  gemma4_e2b: { name: "Gemma 4 E2B", size: "about 4.5 GB", search: "gemma 4 e2b", ollama: "gemma4:e2b", note: "Light and quick, with natural-sounding writing." },
+  gemma4_e4b: { name: "Gemma 4 E4B", size: "about 6.5 GB", search: "gemma 4 e4b", ollama: "gemma4:e4b", note: "Natural-sounding writing and quicker than Qwen, since it doesn't think first." },
+  gemma4_12b: { name: "Gemma 4 12B", size: "about 8 GB", search: "gemma 4 12b", ollama: "gemma4:12b", note: "Solid everyday drafts with natural-sounding writing." },
+  gemma4_26b: { name: "Gemma 4 26B A4B", size: "about 17 GB", search: "gemma 4 26b a4b", ollama: "gemma4:26b", note: "The fastest of the big models, since it only uses part of the model for each word." },
+  gemma4_31b: { name: "Gemma 4 31B", size: "about 19 GB", search: "gemma 4 31b", ollama: "gemma4:31b", note: "Google's largest Gemma: careful, polished writing, but slower." },
+  gptoss_20b: { name: "gpt-oss 20B", size: "about 14 GB", search: "gpt-oss 20b", ollama: "gpt-oss:20b", quant: "the default download", note: "OpenAI's open model. Good quality and quick for its size, but uses almost all of 16 GB." },
+  llama32_3b: { name: "Llama 3.2 3B", size: "about 2 GB", search: "llama 3.2 3b instruct", ollama: "llama3.2:3b", note: "The lightest option, for older laptops. Expect plain drafts that need more editing." },
+};
+
 const HARDWARE = [
   {
     id: "ram8",
     label: "Laptop or PC with 8 GB of memory and no graphics card",
-    model: "Gemma 4 E2B",
-    size: "about 4.5 GB",
-    search: "gemma 4 e2b",
-    ollama: "gemma4:e2b",
+    models: ["qwen35_4b", "gemma4_e2b", "llama32_3b"],
     speed: "A set of drafts takes roughly one to three minutes.",
-    quality: "Usable first drafts. Expect to rewrite parts before you send them.",
   },
   {
     id: "ram16",
     label: "Laptop or PC with 16 GB of memory and no graphics card",
-    model: "Gemma 4 E4B",
-    size: "about 6.5 GB",
-    search: "gemma 4 e4b",
-    ollama: "gemma4:e4b",
-    speed: "A set of drafts takes roughly two to four minutes on the processor alone.",
-    quality: "Decent drafts. Check the details and the opener before you send.",
+    models: ["qwen35_9b", "gemma4_e4b", "gptoss_20b"],
+    speed: "A set of drafts takes roughly two to five minutes on the processor alone.",
   },
   {
     id: "gpu8",
     label: "PC with a graphics card with 6 to 8 GB (NVIDIA or AMD)",
-    model: "Gemma 4 E4B",
-    size: "about 6.5 GB",
-    search: "gemma 4 e4b",
-    ollama: "gemma4:e4b",
-    speed: "A set of drafts takes under a minute.",
-    quality: "Decent drafts. Check the details and the opener before you send.",
+    models: ["qwen35_9b", "gemma4_e4b", "qwen35_4b"],
+    speed: "A set of drafts takes under a minute. On a 6 GB card, pick one of the smaller two.",
   },
   {
     id: "gpu12",
     label: "PC with a graphics card with 12 to 16 GB (NVIDIA or AMD)",
-    model: "Gemma 4 12B",
-    size: "about 8 GB",
-    search: "gemma 4 12b",
-    ollama: "gemma4:12b",
-    speed: "A set of drafts takes under a minute.",
-    quality: "Solid everyday drafts. Writing is plainer than Claude's, so read it over before you send it.",
+    models: ["gemma4_12b", "qwen35_9b", "gptoss_20b"],
+    speed: "A set of drafts takes under a minute. gpt-oss 20B needs the full 16 GB.",
   },
   {
     id: "gpu24",
     label: "PC with a graphics card with 24 GB or more",
-    model: "Gemma 4 26B A4B",
-    size: "about 17 GB",
-    search: "gemma 4 26b a4b",
-    ollama: "gemma4:26b",
-    speed: "A set of drafts takes well under a minute. It only uses part of the model for each word, so it's quick for its size.",
-    quality: "The closest to Claude of the free options.",
+    models: ["qwen38_27b", "gemma4_26b", "gemma4_31b"],
+    speed: "A set of drafts takes well under a minute with Gemma 4 26B A4B, and a minute or so with the others.",
   },
   {
     id: "mac16",
     label: "Mac with Apple silicon and 16 GB of memory",
-    model: "Gemma 4 12B",
-    size: "about 8 GB",
-    search: "gemma 4 12b",
-    ollama: "gemma4:12b",
+    models: ["gemma4_12b", "qwen35_9b", "qwen35_4b"],
     speed: "A set of drafts takes about a minute.",
-    quality: "Solid everyday drafts. Writing is plainer than Claude's, so read it over before you send it.",
   },
   {
     id: "mac32",
     label: "Mac with Apple silicon and 32 GB of memory or more",
-    model: "Gemma 4 26B A4B",
-    size: "about 17 GB",
-    search: "gemma 4 26b a4b",
-    ollama: "gemma4:26b",
-    speed: "A set of drafts takes well under a minute.",
-    quality: "The closest to Claude of the free options.",
+    models: ["qwen38_27b", "gemma4_26b", "qwen35_35b"],
+    speed: "A set of drafts takes a minute or two. Gemma 4 26B A4B and Qwen 3.5 35B A3B are the quickest.",
   },
 ];
 
@@ -409,23 +397,44 @@ function code(text) {
   return el("code", "", text);
 }
 
+// Which of a tier's models is shown; goes back to the best fit when the tier changes.
+let suggestion = 0;
+
 function renderRecommendation() {
-  const pick = HARDWARE.find((h) => h.id === settings.hardware) ?? HARDWARE[0];
+  const tier = HARDWARE.find((h) => h.id === settings.hardware) ?? HARDWARE[0];
+  const pick = MODELS[tier.models[suggestion] ?? tier.models[0]];
   const box = document.getElementById("recommendation");
+
+  const choices = el("div", "model-choices");
+  choices.setAttribute("role", "group");
+  choices.setAttribute("aria-label", "Suggested models");
+  tier.models.forEach((id, index) => {
+    const button = el("button", "model-choice", MODELS[id].name);
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(MODELS[id] === pick));
+    if (index === 0) button.append(el("span", "best", "Best fit"));
+    button.addEventListener("click", () => {
+      suggestion = index;
+      renderRecommendation();
+    });
+    choices.append(button);
+  });
+
   const how = el("p");
   if (settings.provider === "ollama") {
-    how.append(`Download ${pick.model} (${pick.size}). In a terminal, run `, code(`ollama pull ${pick.ollama}`), ".");
+    how.append(`Download ${pick.name} (${pick.size}). In a terminal, run `, code(`ollama pull ${pick.ollama}`), ".");
   } else {
+    const quant = pick.quant ?? "the Q4_K_M version (or MLX 4-bit on a Mac)";
     how.append(
-      `Download ${pick.model} (${pick.size}). In LM Studio's Discover tab, search `,
+      `Download ${pick.name} (${pick.size}). In LM Studio's Discover tab, search `,
       code(pick.search),
-      " and pick the Q4_K_M version (or MLX 4-bit on a Mac). When you load it, set Context Length to at least 8192.",
+      ` and pick ${quant}. When you load it, set Context Length to at least 8192.`,
     );
   }
   const actions = el("p");
-  const use = el("button", "link-button", settings.provider === "ollama" ? `Use ${pick.ollama}` : "Then press Test connection to pick it from the Model list.");
-  use.type = "button";
   if (settings.provider === "ollama") {
+    const use = el("button", "link-button", `Use ${pick.ollama}`);
+    use.type = "button";
     use.addEventListener("click", () => {
       modelInput.value = pick.ollama;
       modelInput.dispatchEvent(new Event("input"));
@@ -433,9 +442,9 @@ function renderRecommendation() {
     actions.append(use);
   } else {
     actions.className = "muted";
-    actions.textContent = use.textContent;
+    actions.textContent = "Then press Test connection to pick it from the Model list.";
   }
-  box.replaceChildren(how, el("p", "muted", pick.speed), el("p", "muted", pick.quality), actions);
+  box.replaceChildren(choices, el("p", "", pick.note), how, el("p", "muted", tier.speed), actions);
 }
 
 function renderForm() {
@@ -516,6 +525,7 @@ urlInput.addEventListener("change", () => {
 modelInput.addEventListener("input", () => onChange(() => (settings.servers[settings.provider].model = modelInput.value)));
 hardwareSelect.addEventListener("change", () => {
   onChange(() => (settings.hardware = hardwareSelect.value));
+  suggestion = 0;
   renderRecommendation();
 });
 

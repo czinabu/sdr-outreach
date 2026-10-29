@@ -563,3 +563,18 @@ code { padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); fon
 
 .storage-note { font-size: 0.85rem; }
 .storage-note .link-button { display: inline; margin: 0; font-size: inherit; font-weight: 600; }
+
+.model-choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.model-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+.model-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.model-choice .best { font-size: 0.72rem; font-weight: 700; color: var(--good); }
