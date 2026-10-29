@@ -4,11 +4,13 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": false,
     "verbatimModuleSyntax": false,
     "erasableSyntaxOnly": true,
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["server", "test"]
+  "include": ["server", "server.ts", "test"]
 }

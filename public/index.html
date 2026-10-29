@@ -218,9 +218,11 @@
     <section class="panel contacts-list-panel">
       <div class="contacts-head">
         <h2>Contacts</h2>
-        <a class="button secondary" href="/api/contacts.csv" download id="export-csv">Export CSV</a>
+        <button type="button" class="secondary" id="export-csv">Export CSV</button>
       </div>
       <p class="muted" data-guide>Everyone you save from the Draft view, sorted by who to follow up with first. Export to CSV to import into HubSpot, Salesforce or a spreadsheet.</p>
+      <p class="muted storage-note">Saved only in this browser, on this device. Nobody else can see them, and clearing your browser data deletes them, so <button type="button" class="link-button" id="backup-contacts">download a backup</button> now and then. <label class="link-button" id="restore-label">Restore a backup<input type="file" id="restore-contacts" accept=".json,application/json" hidden></label></p>
+      <p class="error" id="contacts-error" role="alert" hidden></p>
       <div class="row filters">
         <label>Search
           <input type="search" id="contact-search" placeholder="Name or company">
@@ -274,7 +276,7 @@
         </label>
         <div class="callout">
           <h4>Your key and your privacy</h4>
-          <p>Your key goes straight from this browser to Anthropic. It never passes through SDR Outreach's server, which runs on your computer and only builds the prompt from your form, and nothing logs or keeps it. This page can only talk to Anthropic and to model servers on this computer. Use a key with a spending limit, and delete it at console.anthropic.com if you ever think it's been exposed.</p>
+          <p>Your key goes straight from this browser to Anthropic. It never passes through SDR Outreach's server, and nothing logs or keeps it. This page can only talk to Anthropic and to model servers on your own computer, and it loads no outside scripts that could read your key. Use a key with a spending limit, and delete it at console.anthropic.com if you ever think it's been exposed.</p>
         </div>
         <label class="check callout">
           <input type="checkbox" id="budget-mode">

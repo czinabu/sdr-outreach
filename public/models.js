@@ -18,8 +18,7 @@ const SERVERS = {
   ollama: {
     name: "Ollama",
     url: "http://localhost:11434/v1",
-    notRunning:
-      "Make sure Ollama is running. If it is, it may be blocking this page: set the OLLAMA_ORIGINS environment variable to http://localhost:3005 (or whatever port this app uses) and restart Ollama.",
+    notRunning: `Make sure Ollama is running. If it is, it may be blocking this page: set the OLLAMA_ORIGINS environment variable to ${location.origin} and restart Ollama.`,
   },
 };
 
@@ -97,8 +96,8 @@ const HARDWARE = [
   },
 ];
 
-/** What the server drafts with from .env (never includes a key). */
-let serverModel = { provider: "claude", hasApiKey: false };
+/** What the server drafts with from .env (never includes a key), and whether this is the public copy of the app. */
+let serverModel = { provider: "claude", hasApiKey: false, hosted: false, maxFileBytes: 10 * 1024 * 1024 };
 let settings = null;
 
 // --- Storage -----------------------------------------------------------------
@@ -469,6 +468,9 @@ function renderForm() {
       provider === "lmstudio"
         ? `The default (${server.url}) works unless you changed the port in LM Studio. In LM Studio, open the Developer tab, start the server, click Server Settings and switch on Enable CORS. Without it, this page can't connect.`
         : `The default (${server.url}) works unless you changed Ollama's port. Ollama starts its server by itself once it's installed.`;
+    if (serverModel.hosted) {
+      help.textContent += " Your browser may ask whether this site can use devices on your local network: allow it, so the page can reach the model on your computer. Chrome and Edge work best.";
+    }
     document.getElementById("model-help").textContent =
       provider === "lmstudio"
         ? "The model's identifier from LM Studio's Developer tab. Test connection lists the ones you've downloaded."
@@ -541,10 +543,15 @@ async function checkQuietly() {
   if (!document.getElementById("model-view").hidden) showResult(result);
 }
 
+/** The largest file this copy of the app accepts. A public copy takes smaller ones. */
+export function maxFileBytes() {
+  return serverModel.maxFileBytes ?? 10 * 1024 * 1024;
+}
+
 export async function initModelSettings() {
   try {
     const response = await fetch("/api/model");
-    if (response.ok) serverModel = await response.json();
+    if (response.ok) serverModel = { ...serverModel, ...(await response.json()) };
   } catch {
     // An older server: keep the defaults.
   }

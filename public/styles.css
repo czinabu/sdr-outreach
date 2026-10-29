@@ -560,3 +560,6 @@ code { padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); fon
 .model-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
 .model-dot.ok { background: var(--good); }
 .model-dot.error { background: var(--error); }
+
+.storage-note { font-size: 0.85rem; }
+.storage-note .link-button { display: inline; margin: 0; font-size: inherit; font-weight: 600; }

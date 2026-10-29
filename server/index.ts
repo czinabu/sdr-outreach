@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { DEFAULT_CONTACTS_FILE, createApp, type ServerModel } from "./app.ts";
-import { ContactStore } from "./contacts.ts";
+import fs from "node:fs";
+import { LEGACY_CONTACTS_FILE, createApp, type ServerModel } from "./app.ts";
 import { DraftError, claudeGenerator, type DraftGenerator } from "./drafts.ts";
 import { localModelGenerator } from "./local.ts";
 
@@ -33,9 +33,12 @@ if (provider === "local") {
 }
 
 // Listen on this computer only, so nobody else on your network can open the app or your contacts.
-const server = createApp(generateDrafts, undefined, new ContactStore(DEFAULT_CONTACTS_FILE), serverModel).listen(port, "127.0.0.1", () => {
+const server = createApp(generateDrafts, undefined, { serverModel }).listen(port, "127.0.0.1", () => {
   console.log(`SDR Outreach is running at http://localhost:${port} (drafting with ${providerLabel})`);
-  console.log(`Saved contacts live in ${DEFAULT_CONTACTS_FILE}`);
+  console.log("Saved contacts live in your browser. Use Back up on the Contacts page to keep a copy.");
+  if (fs.existsSync(LEGACY_CONTACTS_FILE)) {
+    console.log(`Contacts from ${LEGACY_CONTACTS_FILE} are copied into your browser the first time you open the app.`);
+  }
 });
 
 server.on("error", (error: NodeJS.ErrnoException) => {
