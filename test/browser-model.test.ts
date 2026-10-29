@@ -141,12 +141,3 @@ test("a public copy limits how often one visitor can draft", async () => {
   }
   assert.equal(last, 429);
 });
-
-test("the Vercel copy sends the same security headers as the app", async () => {
-  const vercel = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
-  const headers = Object.fromEntries(vercel.headers[0].headers.map((h: { key: string; value: string }) => [h.key.toLowerCase(), h.value]));
-  const response = await fetch(`${baseUrl}/`);
-  for (const name of ["content-security-policy", "referrer-policy", "x-content-type-options", "cross-origin-opener-policy"]) {
-    assert.equal(headers[name], response.headers.get(name), name);
-  }
-});

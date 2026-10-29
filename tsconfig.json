@@ -12,5 +12,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["server", "server.ts", "test"]
+  "include": ["server", "server.ts", "scripts", "test"]
 }
