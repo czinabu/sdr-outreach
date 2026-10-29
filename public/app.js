@@ -1,3 +1,17 @@
+import { copyButton, el } from "./dom.js";
+import {
+  dueCount,
+  findContact,
+  getContact,
+  loadContacts,
+  onContactsChange,
+  onDraftAgain,
+  renderContactsView,
+  renderSequence,
+  saveContact,
+  showContact,
+} from "./contacts.js";
+
 const form = document.getElementById("prospect-form");
 const submit = document.getElementById("submit");
 const errorBox = document.getElementById("error");
@@ -79,13 +93,6 @@ function save(key, value) {
   } catch {
     // Storage can be unavailable (private mode); the app still works without it.
   }
-}
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
 }
 
 // --- Guide mode --------------------------------------------------------------
@@ -242,18 +249,7 @@ function addCopyButtons() {
   for (const draft of document.querySelectorAll(".draft")) {
     const head = draft.previousElementSibling;
     if (head.querySelector(".copy")) continue;
-    const button = el("button", "copy", "Copy");
-    button.type = "button";
-    button.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(draft.textContent);
-        button.textContent = "Copied";
-      } catch {
-        button.textContent = "Select and copy";
-      }
-      setTimeout(() => (button.textContent = "Copy"), 1500);
-    });
-    head.append(button);
+    head.append(copyButton(() => draft.textContent));
   }
 }
 
@@ -266,6 +262,126 @@ function renderCadence(steps) {
     }),
   );
 }
+
+// --- Saving to contacts --------------------------------------------------------
+
+const PROSPECT_FIELDS = ["prospectName", "prospectTitle", "company", "industry", "companyWebsite", "notes"];
+const DRAFT_FIELDS = ["websiteHook", "linkedin", "email", "phone", "researchToDo"];
+let lastCadence = [];
+/** The prospect and drafts on screen, and the saved contact they belong to (if any). */
+let current = { prospect: null, drafts: null, contactId: null };
+
+function renderSequenceTab() {
+  const contact = current.contactId && getContact(current.contactId);
+  document.getElementById("cadence-hint").hidden = Boolean(contact);
+  if (contact) renderSequence(document.getElementById("cadence"), contact, showSaveError);
+  else renderCadence(lastCadence);
+}
+
+function renderSaveBar(message) {
+  const contact = current.contactId && getContact(current.contactId);
+  const saveButton = document.getElementById("save-contact");
+  saveButton.hidden = Boolean(contact);
+  saveButton.disabled = false;
+  document.getElementById("open-contact").hidden = !contact;
+  const status = document.getElementById("save-status");
+  status.classList.remove("error");
+  if (contact) {
+    const next = contact.nextFollowUp;
+    const when = next && new Date(`${next.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+    status.textContent = `${message ?? "Saved to contacts."}${next ? ` Next: ${next.channel ? `${next.channel}, ` : ""}${next.action.toLowerCase()} on ${when}.` : ""}`;
+  } else {
+    status.textContent = "Save this prospect to keep these drafts and put dates on the follow-up sequence.";
+  }
+}
+
+function showSaveError(message) {
+  const status = document.getElementById("save-status");
+  status.textContent = message;
+  status.classList.add("error");
+}
+
+async function storeDrafts(button) {
+  if (button) button.disabled = true;
+  try {
+    const existing = Boolean(current.contactId);
+    const contact = await saveContact(current.prospect, current.drafts);
+    current.contactId = contact.id;
+    renderSaveBar(existing ? `Added to ${contact.prospectName}'s draft history.` : undefined);
+    renderSequenceTab();
+  } catch (error) {
+    if (button) button.disabled = false;
+    showSaveError(error.message);
+  }
+}
+
+document.getElementById("save-contact").addEventListener("click", (event) => storeDrafts(event.currentTarget));
+document.getElementById("open-contact").addEventListener("click", () => {
+  showView("contacts");
+  showContact(current.contactId);
+});
+
+/** After drafting: if this prospect is already a contact, add the drafts to their history automatically. */
+async function afterDrafting(data, drafts) {
+  current = {
+    prospect: Object.fromEntries(PROSPECT_FIELDS.map((name) => [name, data[name] ?? ""])),
+    drafts: Object.fromEntries(DRAFT_FIELDS.map((name) => [name, drafts[name]])),
+    contactId: findContact(data.prospectName, data.company)?.id ?? null,
+  };
+  renderSaveBar();
+  renderSequenceTab();
+  if (current.contactId) await storeDrafts();
+}
+
+onContactsChange(() => {
+  const badge = document.getElementById("due-badge");
+  const due = dueCount();
+  badge.textContent = String(due);
+  badge.hidden = due === 0;
+  badge.title = `${due} due today or overdue`;
+  if (current.contactId && !getContact(current.contactId)) current.contactId = null;
+  if (current.drafts) {
+    renderSaveBar();
+    renderSequenceTab();
+  }
+  if (!document.getElementById("contacts-view").hidden) renderContactsView();
+});
+
+// "Write new drafts" on a contact: fill in the form, show their latest drafts and go back to the Draft view.
+onDraftAgain((contact) => {
+  for (const name of PROSPECT_FIELDS) {
+    if (form.elements[name] && contact[name] !== undefined) form.elements[name].value = contact[name];
+  }
+  updateIndustryTip();
+  const latest = contact.drafts.at(-1);
+  if (latest) {
+    current = { prospect: Object.fromEntries(PROSPECT_FIELDS.map((n) => [n, contact[n]])), drafts: latest.drafts, contactId: contact.id };
+    render({ ...latest.drafts, cadence: contact.sequence });
+    renderSaveBar("Showing their latest saved drafts. Press Draft my outreach for new ones.");
+    showState("results");
+  } else {
+    current = { prospect: null, drafts: null, contactId: null };
+    showState("empty");
+  }
+  showView("draft");
+  form.elements.notes.focus();
+});
+
+// --- Views ---------------------------------------------------------------------
+
+function showView(name) {
+  document.getElementById("draft-view").hidden = name !== "draft";
+  document.getElementById("contacts-view").hidden = name !== "contacts";
+  for (const button of document.querySelectorAll("[data-view]")) {
+    if (button.dataset.view === name) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+  if (name === "contacts") renderContactsView();
+  const hash = name === "contacts" ? "#contacts" : "";
+  if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname);
+}
+
+for (const button of document.querySelectorAll("[data-view]")) button.addEventListener("click", () => showView(button.dataset.view));
 
 function render(drafts) {
   showNotice("website-note", drafts.websiteNote);
@@ -289,7 +405,8 @@ function render(drafts) {
   setText("phone-voicemail", drafts.phone.voicemail);
   setText("phone-why", drafts.phone.why);
 
-  renderCadence(drafts.cadence ?? []);
+  lastCadence = drafts.cadence ?? [];
+  renderSequenceTab();
   setText("channel-tip", drafts.channelTip ? `For this industry: ${drafts.channelTip}` : "");
   setList("research", drafts.researchToDo);
 
@@ -336,6 +453,7 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(body.error ?? "Something went wrong.");
     render(body);
     showState("results");
+    await afterDrafting(data, body);
     if (window.innerWidth < 960) document.querySelector(".results-panel").scrollIntoView({ behavior: "smooth" });
   } catch (error) {
     showError(error.message);
@@ -345,3 +463,6 @@ form.addEventListener("submit", async (event) => {
     submit.textContent = "Draft my outreach";
   }
 });
+
+await loadContacts();
+if (location.hash === "#contacts") showView("contacts");

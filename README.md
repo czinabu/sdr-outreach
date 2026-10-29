@@ -9,6 +9,8 @@ Enter one prospect and what you sell, and AI (Claude, or a free model on your ow
 - **Context:** add the company's website and the opener mentions something relevant from it. You can also attach a PDF or text file (a case study, pricing sheet or call notes) and say what it is. If a site or file can't be read, you still get drafts, with a note saying it wasn't used.
 - **Guide me** mode adds tips under each channel, common objections and how to answer them, and explains why each draft works.
 
+- **Contacts:** save a prospect and the tool keeps every set of drafts you write for them, puts a date on each step of their follow-up sequence, and shows who's due today. Check steps off as you go, set a status (replied, meeting booked, not interested), add their email, phone and LinkedIn, and export everything to CSV for HubSpot, Salesforce or a spreadsheet. Contacts are saved in `data/contacts.json` on your computer; back that file up if you want to keep them.
+
 Nothing is sent for you. You copy each draft and send it from your own accounts.
 
 ## Run it
@@ -70,5 +72,6 @@ GitHub Actions runs both on every pull request and on pushes to `main`.
 - `server/playbooks.ts` holds the industry playbooks and follow-up sequences.
 - `server/attachment.ts` reads text out of attached PDFs and text files.
 - `server/website.ts` fetches a company web page and pulls out its readable text.
-- `server/app.ts` is the Express server with the `/api/drafts` endpoint.
+- `server/contacts.ts` stores saved contacts in `data/contacts.json`, works out follow-up dates and builds the CSV export.
+- `server/app.ts` is the Express server with the `/api/drafts` and `/api/contacts` endpoints.
 - `public/` is the page itself (plain HTML, CSS and JavaScript).
