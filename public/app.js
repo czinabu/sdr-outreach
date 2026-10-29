@@ -153,11 +153,13 @@ async function loadIndustries() {
     setIndustryLabels(Object.fromEntries(industries.map(({ key, label }) => [key, label])));
     return true;
   } catch {
-    // Usually the server is still running older code after an update; keep "General" and say how to fix it.
+    // Keep "General" and say what to try. On your own computer it's usually the server still running older code.
     industryTip.removeAttribute("data-guide");
     industryTip.classList.add("warn");
     industryTip.textContent =
-      "Couldn't load the industry list. If you just updated the app, stop it with Ctrl+C, run npm install and npm start, then refresh this page.";
+      location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? "Couldn't load the industry list. If you just updated the app, stop it with Ctrl+C, run npm install and npm start, then refresh this page."
+        : "Couldn't reach SDR Outreach's server, so the industry list and drafting aren't available right now. Refresh the page in a minute.";
     return false;
   }
 }

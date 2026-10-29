@@ -7,6 +7,7 @@ import { DraftError, ProspectInput, claudeRequest, type DraftGenerator, type Dra
 import { AttachmentError, readAttachment } from "./attachment.ts";
 import { BAD_FORMAT, localChatRequest, parseDrafts } from "./local.ts";
 import { PLAYBOOKS, playbookFor } from "./playbooks.ts";
+import { SECURITY_HEADERS } from "./security.ts";
 import { WebsiteError, readWebsite } from "./website.ts";
 
 const rootDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -61,19 +62,6 @@ const ModelReply = z.object({
   content: z.string().max(200_000),
 });
 
-// The page talks to Anthropic and to model servers on this computer, and nothing else.
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self'",
-  "img-src 'self' data:",
-  "connect-src 'self' https://api.anthropic.com http://localhost:* http://127.0.0.1:*",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
-
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /** Reads the website and attached file for a draft. Either can fail; the drafts then go ahead without it. */
@@ -121,12 +109,7 @@ export function createApp(generateDrafts: DraftGenerator, fetchWebsite: typeof r
       res.status(403).send("SDR Outreach only answers on localhost.");
       return;
     }
-    res.set({
-      "Content-Security-Policy": CONTENT_SECURITY_POLICY,
-      "Referrer-Policy": "no-referrer",
-      "X-Content-Type-Options": "nosniff",
-      "Cross-Origin-Opener-Policy": "same-origin",
-    });
+    res.set(SECURITY_HEADERS);
     next();
   });
   // Large enough for the biggest allowed attachment once base64-encoded.

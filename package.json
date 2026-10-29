@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.ts",
     "test": "node --test test/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:vercel": "node scripts/build-vercel.ts"
   },
   "repository": {
     "type": "git",
@@ -25,6 +26,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
+    "esbuild": "^0.28.1",
     "typescript": "^7.0.2"
   },
   "type": "module",
