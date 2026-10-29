@@ -11,6 +11,7 @@ import {
   saveContact,
   showContact,
 } from "./contacts.js";
+import { draftingWith, initModelSettings, requestDrafts } from "./models.js";
 
 const form = document.getElementById("prospect-form");
 const submit = document.getElementById("submit");
@@ -369,15 +370,16 @@ onDraftAgain((contact) => {
 
 // --- Views ---------------------------------------------------------------------
 
+const VIEWS = ["draft", "contacts", "model"];
+
 function showView(name) {
-  document.getElementById("draft-view").hidden = name !== "draft";
-  document.getElementById("contacts-view").hidden = name !== "contacts";
+  for (const view of VIEWS) document.getElementById(`${view}-view`).hidden = view !== name;
   for (const button of document.querySelectorAll("[data-view]")) {
     if (button.dataset.view === name) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   }
   if (name === "contacts") renderContactsView();
-  const hash = name === "contacts" ? "#contacts" : "";
+  const hash = name === "draft" ? "" : `#${name}`;
   if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname);
 }
 
@@ -441,16 +443,11 @@ form.addEventListener("submit", async (event) => {
   submit.disabled = true;
   submit.textContent = "Drafting...";
   const hadResults = !document.getElementById("results").hidden;
+  setText("loading-model", `Drafting with ${draftingWith()}. This takes a few seconds with Claude and up to a few minutes with a local model.`);
   showState("loading");
   try {
     if (attachment) data.attachment = { name: attachment.name, data: await toBase64(attachment) };
-    const response = await fetch("/api/drafts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const body = await response.json();
-    if (!response.ok) throw new Error(body.error ?? "Something went wrong.");
+    const body = await requestDrafts(data);
     render(body);
     showState("results");
     await afterDrafting(data, body);
@@ -464,5 +461,6 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-await loadContacts();
-if (location.hash === "#contacts") showView("contacts");
+await Promise.all([loadContacts(), initModelSettings()]);
+const startView = location.hash.slice(1);
+if (VIEWS.includes(startView) && startView !== "draft") showView(startView);

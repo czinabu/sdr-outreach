@@ -1,0 +1,567 @@
+// Model settings: which AI writes the drafts, and the calls to it. With LM Studio, Ollama or an API key
+// entered here, the browser talks to the model directly; the app's server only builds the prompt and checks the reply.
+import { el } from "./dom.js";
+
+const SETTINGS_KEY = "sdr-outreach:model";
+const API_KEY_KEY = "sdr-outreach:anthropic-key";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1";
+const CLAUDE_MODEL = "claude-opus-5-5";
+const BUDGET_MODEL = "claude-haiku-5-5";
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+const SERVERS = {
+  lmstudio: {
+    name: "LM Studio",
+    url: "http://localhost:1234/v1",
+    notRunning: "Start the server in LM Studio's Developer tab, and in Server Settings switch on Enable CORS.",
+  },
+  ollama: {
+    name: "Ollama",
+    url: "http://localhost:11434/v1",
+    notRunning:
+      "Make sure Ollama is running. If it is, it may be blocking this page: set the OLLAMA_ORIGINS environment variable to http://localhost:3005 (or whatever port this app uses) and restart Ollama.",
+  },
+};
+
+// Rough guidance for small sales drafts. Sizes are the 4-bit downloads; speeds vary a lot between machines.
+const HARDWARE = [
+  {
+    id: "ram8",
+    label: "Laptop or PC with 8 GB of memory and no graphics card",
+    model: "Gemma 4 E2B",
+    size: "about 4.5 GB",
+    search: "gemma 4 e2b",
+    ollama: "gemma4:e2b",
+    speed: "A set of drafts takes roughly one to three minutes.",
+    quality: "Usable first drafts. Expect to rewrite parts before you send them.",
+  },
+  {
+    id: "ram16",
+    label: "Laptop or PC with 16 GB of memory and no graphics card",
+    model: "Gemma 4 E4B",
+    size: "about 6.5 GB",
+    search: "gemma 4 e4b",
+    ollama: "gemma4:e4b",
+    speed: "A set of drafts takes roughly two to four minutes on the processor alone.",
+    quality: "Decent drafts. Check the details and the opener before you send.",
+  },
+  {
+    id: "gpu8",
+    label: "PC with a graphics card with 6 to 8 GB (NVIDIA or AMD)",
+    model: "Gemma 4 E4B",
+    size: "about 6.5 GB",
+    search: "gemma 4 e4b",
+    ollama: "gemma4:e4b",
+    speed: "A set of drafts takes under a minute.",
+    quality: "Decent drafts. Check the details and the opener before you send.",
+  },
+  {
+    id: "gpu12",
+    label: "PC with a graphics card with 12 to 16 GB (NVIDIA or AMD)",
+    model: "Gemma 4 12B",
+    size: "about 8 GB",
+    search: "gemma 4 12b",
+    ollama: "gemma4:12b",
+    speed: "A set of drafts takes under a minute.",
+    quality: "Solid everyday drafts. Writing is plainer than Claude's, so read it over before you send it.",
+  },
+  {
+    id: "gpu24",
+    label: "PC with a graphics card with 24 GB or more",
+    model: "Gemma 4 26B A4B",
+    size: "about 17 GB",
+    search: "gemma 4 26b a4b",
+    ollama: "gemma4:26b",
+    speed: "A set of drafts takes well under a minute. It only uses part of the model for each word, so it's quick for its size.",
+    quality: "The closest to Claude of the free options.",
+  },
+  {
+    id: "mac16",
+    label: "Mac with Apple silicon and 16 GB of memory",
+    model: "Gemma 4 12B",
+    size: "about 8 GB",
+    search: "gemma 4 12b",
+    ollama: "gemma4:12b",
+    speed: "A set of drafts takes about a minute.",
+    quality: "Solid everyday drafts. Writing is plainer than Claude's, so read it over before you send it.",
+  },
+  {
+    id: "mac32",
+    label: "Mac with Apple silicon and 32 GB of memory or more",
+    model: "Gemma 4 26B A4B",
+    size: "about 17 GB",
+    search: "gemma 4 26b a4b",
+    ollama: "gemma4:26b",
+    speed: "A set of drafts takes well under a minute.",
+    quality: "The closest to Claude of the free options.",
+  },
+];
+
+/** What the server drafts with from .env (never includes a key). */
+let serverModel = { provider: "claude", hasApiKey: false };
+let settings = null;
+
+// --- Storage -----------------------------------------------------------------
+
+function read(storage, key) {
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function write(storage, key, value) {
+  try {
+    if (value === null) storage.removeItem(key);
+    else storage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable (private mode); settings then last until the page is closed.
+  }
+}
+
+function defaults() {
+  const servers = Object.fromEntries(Object.entries(SERVERS).map(([id, server]) => [id, { url: server.url, model: "" }]));
+  let provider = "claude";
+  if (serverModel.provider === "local") {
+    provider = serverModel.baseUrl.includes(":1234") ? "lmstudio" : "ollama";
+    servers[provider] = { url: serverModel.baseUrl, model: serverModel.model };
+  }
+  return { provider, budget: false, hardware: "gpu12", servers };
+}
+
+function loadSettings() {
+  const base = defaults();
+  try {
+    const saved = JSON.parse(read(localStorage, SETTINGS_KEY) ?? "null");
+    if (!saved || typeof saved !== "object") return base;
+    return {
+      provider: ["claude", "lmstudio", "ollama"].includes(saved.provider) ? saved.provider : base.provider,
+      budget: saved.budget === true,
+      hardware: HARDWARE.some((h) => h.id === saved.hardware) ? saved.hardware : base.hardware,
+      servers: Object.fromEntries(
+        Object.keys(SERVERS).map((id) => {
+          const server = saved.servers?.[id] ?? {};
+          return [id, { url: String(server.url ?? base.servers[id].url), model: String(server.model ?? base.servers[id].model) }];
+        }),
+      ),
+    };
+  } catch {
+    return base;
+  }
+}
+
+/** Saves everything except the API key, which has its own storage rules below. */
+function saveSettings() {
+  write(localStorage, SETTINGS_KEY, JSON.stringify(settings));
+}
+
+/** The key lives in this tab's session storage, or in local storage only if the user asked to remember it. */
+function apiKey() {
+  return (read(sessionStorage, API_KEY_KEY) ?? read(localStorage, API_KEY_KEY) ?? "").trim();
+}
+
+function keyIsRemembered() {
+  return read(localStorage, API_KEY_KEY) !== null;
+}
+
+function storeApiKey(key, remember) {
+  const value = key.trim() || null;
+  write(sessionStorage, API_KEY_KEY, value);
+  // Not remembering means no copy outlives the tab, including one saved earlier.
+  write(localStorage, API_KEY_KEY, remember ? value : null);
+}
+
+// --- Checking settings -------------------------------------------------------
+
+function serverUrl(provider) {
+  return settings.servers[provider].url.trim().replace(/\/+$/, "");
+}
+
+/** Why this address can't be used, or "" if it can. The page may only talk to servers on this computer. */
+function urlProblem(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return "Enter the full address, like http://localhost:1234/v1.";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "The address has to start with http://.";
+  if (!LOCAL_HOSTS.has(parsed.hostname)) {
+    return "For your privacy, this page only connects to model servers on this computer (localhost or 127.0.0.1).";
+  }
+  if (parsed.username || parsed.password) return "Leave the user name and password out of the address.";
+  return "";
+}
+
+function keyProblem(key) {
+  if (!key) return "";
+  return /^sk-ant-[\w-]+$/.test(key) ? "" : "That doesn't look like an Anthropic API key. Keys start with sk-ant-.";
+}
+
+function claudeModel() {
+  return settings.budget ? BUDGET_MODEL : CLAUDE_MODEL;
+}
+
+// --- Calling the models ------------------------------------------------------
+
+async function json(response) {
+  return response.json().catch(() => ({}));
+}
+
+async function post(url, body) {
+  const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await json(response);
+  if (!response.ok) throw new Error(data.error ?? "Something went wrong.");
+  return data;
+}
+
+function anthropicHeaders(key) {
+  return {
+    "content-type": "application/json",
+    "x-api-key": key,
+    "anthropic-version": "2023-06-01",
+    // Anthropic asks browser callers to opt in, since a key in a web page can be read by that page.
+    // This page is served from your own computer and loads no outside scripts, so the key stays with you.
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
+}
+
+function anthropicError(status, data) {
+  if (status === 401) return "Anthropic didn't accept that API key. Check it on the Model settings page.";
+  if (status === 403) return "That API key isn't allowed to use this model. Check its permissions at console.anthropic.com.";
+  if (status === 429) return "Too many requests right now, or your account hit its spending limit. Wait a minute and try again.";
+  if (status === 529 || status >= 500) return "Anthropic is busy right now. Try again in a minute.";
+  return `Anthropic returned an error (${status}): ${data.error?.message ?? "unknown error"}`;
+}
+
+const anthropicRequest = { credentials: "omit", referrerPolicy: "no-referrer", cache: "no-store" };
+
+async function draftWithClaude(prompt, key) {
+  const budget = settings.budget;
+  const headers = anthropicHeaders(key);
+  // Opus can hand a declined request to another model; Haiku has no fallback.
+  if (!budget) headers["anthropic-beta"] = "server-side-fallback-2026-07-01";
+  let response;
+  try {
+    response = await fetch(`${ANTHROPIC_URL}/messages`, {
+      ...anthropicRequest,
+      method: "POST",
+      headers,
+      body: JSON.stringify({ model: claudeModel(), ...prompt.claude, ...(budget ? {} : { fallbacks: "default" }) }),
+    });
+  } catch {
+    throw new Error("Couldn't reach Anthropic. Check your internet connection and try again.");
+  }
+  const data = await json(response);
+  if (!response.ok) throw new Error(anthropicError(response.status, data));
+  if (data.stop_reason === "refusal") throw new Error("Claude declined to write this outreach. Try rewording the notes or offer.");
+  if (data.stop_reason === "max_tokens") throw new Error("Claude's reply was cut off. Try again.");
+  const text = (data.content ?? []).find((block) => block.type === "text")?.text;
+  if (!text) throw new Error("Claude returned no drafts. Try again.");
+  return text;
+}
+
+async function draftWithLocal(prompt, provider) {
+  const server = SERVERS[provider];
+  const url = serverUrl(provider);
+  const model = settings.servers[provider].model.trim();
+  const problem = urlProblem(url);
+  if (problem) throw new Error(problem);
+  if (!model) throw new Error(`Pick a model on the Model settings page first.`);
+
+  let response;
+  try {
+    response = await fetch(`${url}/chat/completions`, {
+      method: "POST",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, ...prompt.local }),
+    });
+  } catch {
+    setStatus("error", `Can't reach ${server.name}`);
+    throw new Error(`Couldn't reach ${server.name} at ${url}. ${server.notRunning}`);
+  }
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 300);
+    if (/context|n_ctx|too long|tokens? (?:exceed|limit)/i.test(detail)) {
+      throw new Error(`The prompt is too long for the model's context length. Reload the model with Context Length set to at least 8192, or leave out the file.`);
+    }
+    if (response.status === 404 || /model/i.test(detail)) {
+      const fix = provider === "ollama" ? ` Download it with: ollama pull ${model}` : " Check the name with Test connection on the Model settings page.";
+      throw new Error(`${server.name} doesn't have the model "${model}".${fix}`);
+    }
+    throw new Error(`${server.name} returned an error (${response.status}): ${detail}`);
+  }
+  const data = await json(response);
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error(`${server.name}'s reply was empty. Try again, or switch to a larger model.`);
+  return text;
+}
+
+/** Drafts outreach with whichever model is chosen. Returns what /api/drafts returns. */
+export async function requestDrafts(data) {
+  const key = apiKey();
+  if (needsSetup()) throw new Error("Pick a model first: open Model settings and add your Anthropic API key, or choose LM Studio or Ollama.");
+  // Claude without a key here uses the server's own setup from .env.
+  if (settings.provider === "claude" && !key) return post("/api/drafts", data);
+
+  const prompt = await post("/api/drafts/prompt", data);
+  const content = settings.provider === "claude" ? await draftWithClaude(prompt, key) : await draftWithLocal(prompt, settings.provider);
+  const drafts = await post("/api/drafts/parse", { industry: data.industry, content });
+  return { ...drafts, websiteNote: prompt.websiteNote, attachmentNote: prompt.attachmentNote };
+}
+
+/** Text for the loading screen. */
+export function draftingWith() {
+  if (settings.provider === "claude") {
+    if (!apiKey() && serverModel.provider === "local") return serverModel.model;
+    return settings.budget && apiKey() ? "Claude Haiku" : "Claude";
+  }
+  return `${settings.servers[settings.provider].model || "your local model"} in ${SERVERS[settings.provider].name}`;
+}
+
+// --- Testing the connection --------------------------------------------------
+
+async function testClaude() {
+  const key = apiKey();
+  if (!key) {
+    if (serverModel.provider === "local") return { ok: true, text: `No key entered here, so drafts use ${serverModel.model} from your .env file.` };
+    if (serverModel.hasApiKey) return { ok: true, text: "No key entered here, so drafts use the API key in your .env file." };
+    return { ok: false, text: "Enter your Anthropic API key first." };
+  }
+  const problem = keyProblem(key);
+  if (problem) return { ok: false, text: problem };
+  let response;
+  try {
+    // Looking up the model checks the key without spending anything.
+    response = await fetch(`${ANTHROPIC_URL}/models/${claudeModel()}`, { ...anthropicRequest, headers: anthropicHeaders(key) });
+  } catch {
+    return { ok: false, text: "Couldn't reach Anthropic. Check your internet connection." };
+  }
+  if (!response.ok) return { ok: false, text: anthropicError(response.status, await json(response)) };
+  return { ok: true, text: `Connected. Your key works with ${claudeModel()}.` };
+}
+
+async function testLocal(provider) {
+  const server = SERVERS[provider];
+  const url = serverUrl(provider);
+  const problem = urlProblem(url);
+  if (problem) return { ok: false, text: problem };
+  let models;
+  try {
+    const response = await fetch(`${url}/models`, { credentials: "omit", referrerPolicy: "no-referrer", cache: "no-store" });
+    if (!response.ok) return { ok: false, text: `${server.name} answered with an error (${response.status}). Check the address ends in /v1.` };
+    models = ((await json(response)).data ?? []).map((m) => String(m.id)).filter(Boolean);
+  } catch {
+    return { ok: false, text: `Couldn't reach ${server.name} at ${url}. ${server.notRunning}` };
+  }
+
+  document.getElementById("model-options").replaceChildren(...models.map((id) => new Option(id, id)));
+  if (models.length === 0) {
+    const fix = provider === "ollama" ? "Download one with ollama pull (see the suggestion above)." : "Download one in LM Studio's Discover tab.";
+    return { ok: false, text: `Connected to ${server.name}, but it has no models yet. ${fix}` };
+  }
+  const chosen = settings.servers[provider];
+  if (!chosen.model.trim()) {
+    chosen.model = models[0];
+    document.getElementById("model-name").value = chosen.model;
+    saveSettings();
+  }
+  if (!models.includes(chosen.model.trim())) {
+    return { ok: false, text: `Connected to ${server.name}, but it doesn't have "${chosen.model}". Pick one of: ${models.slice(0, 6).join(", ")}.` };
+  }
+  return { ok: true, text: `Connected to ${server.name}. Drafts will use ${chosen.model}.` };
+}
+
+function testConnection() {
+  return settings.provider === "claude" ? testClaude() : testLocal(settings.provider);
+}
+
+// --- The settings page -------------------------------------------------------
+
+const form = document.getElementById("model-form");
+const keyInput = document.getElementById("api-key");
+const rememberBox = document.getElementById("remember-key");
+const urlInput = document.getElementById("server-url");
+const modelInput = document.getElementById("model-name");
+const hardwareSelect = document.getElementById("hardware");
+const statusLine = document.getElementById("connection-status");
+
+function setStatus(state, text) {
+  const dot = document.getElementById("model-dot");
+  dot.className = `model-dot ${state}`;
+  dot.parentElement.title = text;
+}
+
+function showResult(result) {
+  statusLine.textContent = result.text;
+  statusLine.className = result.ok ? "good" : "error";
+  setStatus(result.ok ? "ok" : "error", result.ok ? summary() : result.text);
+}
+
+function summary() {
+  if (settings.provider === "claude") return needsSetup() ? "No Anthropic API key yet" : `Drafting with ${draftingWith()}`;
+  return `Drafting with ${draftingWith()}`;
+}
+
+function code(text) {
+  return el("code", "", text);
+}
+
+function renderRecommendation() {
+  const pick = HARDWARE.find((h) => h.id === settings.hardware) ?? HARDWARE[0];
+  const box = document.getElementById("recommendation");
+  const how = el("p");
+  if (settings.provider === "ollama") {
+    how.append(`Download ${pick.model} (${pick.size}). In a terminal, run `, code(`ollama pull ${pick.ollama}`), ".");
+  } else {
+    how.append(
+      `Download ${pick.model} (${pick.size}). In LM Studio's Discover tab, search `,
+      code(pick.search),
+      " and pick the Q4_K_M version (or MLX 4-bit on a Mac). When you load it, set Context Length to at least 8192.",
+    );
+  }
+  const actions = el("p");
+  const use = el("button", "link-button", settings.provider === "ollama" ? `Use ${pick.ollama}` : "Then press Test connection to pick it from the Model list.");
+  use.type = "button";
+  if (settings.provider === "ollama") {
+    use.addEventListener("click", () => {
+      modelInput.value = pick.ollama;
+      modelInput.dispatchEvent(new Event("input"));
+    });
+    actions.append(use);
+  } else {
+    actions.className = "muted";
+    actions.textContent = use.textContent;
+  }
+  box.replaceChildren(how, el("p", "muted", pick.speed), el("p", "muted", pick.quality), actions);
+}
+
+function renderForm() {
+  const provider = settings.provider;
+  for (const radio of form.elements.provider) {
+    radio.checked = radio.value === provider;
+    radio.closest(".choice").classList.toggle("selected", radio.checked);
+  }
+  const local = provider !== "claude";
+  document.getElementById("claude-settings").hidden = local;
+  document.getElementById("local-settings").hidden = !local;
+  document.getElementById("budget-mode").checked = settings.budget;
+
+  const serverKey = document.getElementById("server-key-note");
+  serverKey.textContent =
+    serverModel.provider === "local"
+      ? `Leave it empty to draft with your .env setup instead (${serverModel.model} at ${serverModel.baseUrl}, through the app's server).`
+      : serverModel.hasApiKey
+        ? "Leave it empty to use the key in your .env file instead (Budget mode then doesn't apply)."
+        : "";
+
+  if (local) {
+    const server = SERVERS[provider];
+    urlInput.value = settings.servers[provider].url;
+    urlInput.placeholder = server.url;
+    modelInput.value = settings.servers[provider].model;
+    document.getElementById("model-options").replaceChildren();
+    const help = document.getElementById("server-url-help");
+    help.textContent =
+      provider === "lmstudio"
+        ? `The default (${server.url}) works unless you changed the port in LM Studio. In LM Studio, open the Developer tab, start the server, click Server Settings and switch on Enable CORS. Without it, this page can't connect.`
+        : `The default (${server.url}) works unless you changed Ollama's port. Ollama starts its server by itself once it's installed.`;
+    document.getElementById("model-help").textContent =
+      provider === "lmstudio"
+        ? "The model's identifier from LM Studio's Developer tab. Test connection lists the ones you've downloaded."
+        : "The name you pulled, like gemma4:12b. Test connection lists the ones you've downloaded.";
+    renderRecommendation();
+  }
+  statusLine.textContent = "";
+  statusLine.className = "";
+}
+
+function onChange(update) {
+  update();
+  saveSettings();
+  statusLine.textContent = "";
+  setStatus("unknown", summary());
+}
+
+hardwareSelect.replaceChildren(...HARDWARE.map((h) => new Option(h.label, h.id)));
+
+form.addEventListener("submit", (event) => event.preventDefault());
+for (const radio of form.querySelectorAll('input[name="provider"]')) {
+  radio.addEventListener("change", () => {
+    onChange(() => (settings.provider = radio.value));
+    renderForm();
+    if (settings.provider !== "claude") checkQuietly();
+  });
+}
+keyInput.addEventListener("input", () => {
+  storeApiKey(keyInput.value, rememberBox.checked);
+  const problem = keyProblem(keyInput.value.trim());
+  statusLine.textContent = problem;
+  statusLine.className = problem ? "error" : "";
+  setStatus("unknown", summary());
+});
+rememberBox.addEventListener("change", () => storeApiKey(keyInput.value, rememberBox.checked));
+document.getElementById("budget-mode").addEventListener("change", (event) => onChange(() => (settings.budget = event.target.checked)));
+urlInput.addEventListener("input", () => onChange(() => (settings.servers[settings.provider].url = urlInput.value)));
+urlInput.addEventListener("change", () => {
+  const problem = urlProblem(serverUrl(settings.provider));
+  statusLine.textContent = problem;
+  statusLine.className = problem ? "error" : "";
+});
+modelInput.addEventListener("input", () => onChange(() => (settings.servers[settings.provider].model = modelInput.value)));
+hardwareSelect.addEventListener("change", () => {
+  onChange(() => (settings.hardware = hardwareSelect.value));
+  renderRecommendation();
+});
+
+const testButton = document.getElementById("test-connection");
+testButton.addEventListener("click", async () => {
+  testButton.disabled = true;
+  statusLine.className = "";
+  statusLine.textContent = "Checking...";
+  try {
+    showResult(await testConnection());
+  } finally {
+    testButton.disabled = false;
+  }
+});
+
+/** Checks a local server in the background so the dot in the menu shows whether it's ready. */
+async function checkQuietly() {
+  if (settings.provider === "claude") {
+    setStatus(needsSetup() ? "error" : "ok", summary());
+    return;
+  }
+  const result = await testLocal(settings.provider);
+  setStatus(result.ok ? "ok" : "error", result.ok ? summary() : result.text);
+  // Show what went wrong if the settings page is open.
+  if (!document.getElementById("model-view").hidden) showResult(result);
+}
+
+export async function initModelSettings() {
+  try {
+    const response = await fetch("/api/model");
+    if (response.ok) serverModel = await response.json();
+  } catch {
+    // An older server: keep the defaults.
+  }
+  settings = loadSettings();
+  keyInput.value = apiKey();
+  rememberBox.checked = keyIsRemembered();
+  hardwareSelect.value = settings.hardware;
+  renderForm();
+  await checkQuietly();
+}
+
+/** True when nothing can draft yet, so the Draft view can point to the settings page. */
+export function needsSetup() {
+  return settings.provider === "claude" && !apiKey() && !serverCanDraft();
+}
+
+/** Whether /api/drafts works without a key from this page: a key in .env, or AI_PROVIDER=local. */
+function serverCanDraft() {
+  return serverModel.provider === "local" || serverModel.hasApiKey;
+}
