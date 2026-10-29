@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createApp } from "./app.ts";
+import { DEFAULT_CONTACTS_FILE, createApp } from "./app.ts";
 import { claudeGenerator, type DraftGenerator } from "./drafts.ts";
 import { localModelGenerator } from "./local.ts";
 
@@ -24,6 +24,7 @@ if (provider === "local") {
 
 const server = createApp(generateDrafts).listen(port, () => {
   console.log(`SDR Outreach is running at http://localhost:${port} (drafting with ${providerLabel})`);
+  console.log(`Saved contacts live in ${DEFAULT_CONTACTS_FILE}`);
 });
 
 server.on("error", (error: NodeJS.ErrnoException) => {

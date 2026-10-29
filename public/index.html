@@ -12,13 +12,17 @@
       <h1>SDR Outreach</h1>
       <p class="tagline">LinkedIn, email and phone drafts for one prospect at a time</p>
     </div>
+    <nav class="views" aria-label="Views">
+      <button type="button" data-view="draft" aria-current="page">Draft</button>
+      <button type="button" data-view="contacts">Contacts <span class="badge" id="due-badge" hidden></span></button>
+    </nav>
     <label class="toggle" title="Show tips and explanations for each channel">
       <input type="checkbox" id="guide-mode" checked>
       <span>Guide me</span>
     </label>
   </header>
 
-  <div class="layout">
+  <div class="layout" id="draft-view">
     <form id="prospect-form" class="panel form-panel" novalidate>
       <details class="section" id="about-you" open>
         <summary>
@@ -138,6 +142,12 @@
           <p class="notice hook" id="website-hook" hidden></p>
         </div>
 
+        <div class="save-bar" id="save-bar">
+          <p id="save-status"></p>
+          <button type="button" class="secondary" id="save-contact">Save to contacts</button>
+          <button type="button" class="link-button" id="open-contact" hidden>Open contact</button>
+        </div>
+
         <div class="tabs" role="tablist">
           <button type="button" role="tab" aria-selected="true" data-tab="linkedin">LinkedIn</button>
           <button type="button" role="tab" aria-selected="false" data-tab="email">Email</button>
@@ -193,6 +203,7 @@
         <section class="panel tab-panel" data-panel="sequence" role="tabpanel" hidden>
           <h3>Follow-up sequence</h3>
           <p class="muted" data-guide>Most replies come after the third to fifth touch, so plan the whole sequence before you send the first message. Stop as soon as they reply.</p>
+          <p class="muted" id="cadence-hint">Save this prospect to contacts to put dates on each step and check them off as you go.</p>
           <ol class="cadence" id="cadence"></ol>
           <p class="channel-tip" data-guide id="channel-tip"></p>
           <h3>Research before you send</h3>
@@ -200,6 +211,34 @@
         </section>
       </section>
     </main>
+  </div>
+
+  <div class="contacts-layout" id="contacts-view" hidden>
+    <section class="panel contacts-list-panel">
+      <div class="contacts-head">
+        <h2>Contacts</h2>
+        <a class="button secondary" href="/api/contacts.csv" download id="export-csv">Export CSV</a>
+      </div>
+      <p class="muted" data-guide>Everyone you save from the Draft view, sorted by who to follow up with first. Export to CSV to import into HubSpot, Salesforce or a spreadsheet.</p>
+      <div class="row filters">
+        <label>Search
+          <input type="search" id="contact-search" placeholder="Name or company">
+        </label>
+        <label>Show
+          <select id="contact-filter">
+            <option value="all">Everyone</option>
+            <option value="due">Due today or overdue</option>
+          </select>
+        </label>
+      </div>
+      <p class="due-summary" id="due-summary"></p>
+      <ul class="contact-list" id="contact-list"></ul>
+      <p class="muted" id="contacts-empty" hidden>No contacts yet. Draft outreach for a prospect, then press <strong>Save to contacts</strong>.</p>
+    </section>
+
+    <section class="panel contact-detail" id="contact-detail" aria-live="polite">
+      <p class="muted empty-detail">Pick a contact to see their drafts and follow-ups.</p>
+    </section>
   </div>
 
   <script src="app.js" type="module"></script>
