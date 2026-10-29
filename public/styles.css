@@ -509,3 +509,57 @@ button { font: inherit; font-weight: 600; border-radius: 8px; cursor: pointer; }
 .history-entry .draft-head { margin-top: 14px; }
 .activity { margin: 0; padding-left: 18px; font-size: 0.88rem; color: var(--muted); }
 .contact-detail > .link-button.danger { margin-top: 20px; }
+
+/* Model settings view */
+.model-layout { max-width: 760px; margin: 0 auto; padding: 20px 24px 48px; }
+@media (max-width: 959px) { .model-layout { padding: 16px 16px 40px; } }
+.model-panel { padding: 22px; }
+.model-panel h2 { font-size: 1.3rem; }
+.model-panel > .muted { margin-top: 0; }
+
+.choices { margin: 18px 0; padding: 0; border: 0; display: grid; gap: 10px; }
+.choices legend { margin-bottom: 8px; font-weight: 600; }
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.choice.selected { border-color: var(--accent); background: var(--accent-soft); }
+.choice input, .check input { width: auto; margin: 3px 0 0; accent-color: var(--accent); }
+.choice strong { font-size: 1rem; }
+
+.check { display: flex; align-items: flex-start; gap: 10px; }
+.check > span { font-weight: 600; }
+
+.callout {
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.callout h4 { margin-bottom: 4px; }
+.callout p { margin: 0 0 6px; font-size: 0.9rem; }
+.callout p:last-child { margin-bottom: 0; }
+.callout > label { margin-bottom: 10px; }
+.model-panel a { color: var(--accent); }
+code { padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); font-size: 0.88em; }
+
+.test-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 6px; }
+.test-row p { flex: 1; min-width: 200px; margin: 0; font-size: 0.9rem; }
+.test-row .good { color: var(--good); }
+.test-row .error { margin: 0; }
+.primary { padding: 9px 18px; border: 0; background: var(--accent); color: var(--accent-text); }
+.primary:disabled { opacity: 0.6; cursor: wait; }
+
+.model-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.model-dot.ok { background: var(--good); }
+.model-dot.error { background: var(--error); }
+
+.storage-note { font-size: 0.85rem; }
+.storage-note .link-button { display: inline; margin: 0; font-size: inherit; font-weight: 600; }

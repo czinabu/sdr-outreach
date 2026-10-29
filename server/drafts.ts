@@ -102,6 +102,23 @@ export class DraftError extends Error {
 
 export type DraftGenerator = (input: DraftRequest) => Promise<OutreachDrafts>;
 
+export const CLAUDE_MODEL = "claude-opus-5-5";
+
+const { type: formatType, schema: draftsSchema } = betaZodOutputFormat(OutreachDrafts);
+
+/**
+ * The Messages API request body for these drafts, without the model. The Model settings page sends it
+ * straight from the browser to Anthropic with the user's own key, so the key never reaches this server.
+ */
+export function claudeRequest(input: DraftRequest) {
+  return {
+    max_tokens: 16000,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: "user", content: buildUserPrompt(input) }],
+    output_config: { effort: "low", format: { type: formatType, schema: draftsSchema } },
+  };
+}
+
 export function claudeGenerator(client: Anthropic): DraftGenerator {
   return async (input) => {
     try {
@@ -120,7 +137,7 @@ export function claudeGenerator(client: Anthropic): DraftGenerator {
 
 async function generateWithClaude(client: Anthropic, input: DraftRequest): Promise<OutreachDrafts> {
   const response = await client.beta.messages.parse({
-    model: "claude-opus-5-5",
+    model: CLAUDE_MODEL,
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",

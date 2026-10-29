@@ -1,33 +1,23 @@
 // The contact list: saved prospects, their draft history and their follow-up dates.
+// Everything is kept in this browser (see contact-store.js); nothing about your prospects is stored on a server.
+import { ContactStore, STATUSES, contactsCsv, today, withSchedule } from "./contact-store.js";
 import { copyButton, dueLabel, el, formatDate } from "./dom.js";
 
-const state = { today: "", statuses: {}, contacts: [] };
+const store = new ContactStore(window.localStorage);
+const state = { today: "", statuses: STATUSES, contacts: [] };
 const listeners = new Set();
 let selectedId = null;
 let draftAgain = () => {};
-
-async function request(method, url, body) {
-  const response = await fetch(url, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (response.status === 204) return null;
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error ?? "Couldn't update your contacts. Try again.");
-  return data;
-}
+let industryLabels = {};
 
 function changed() {
   for (const listener of listeners) listener();
 }
 
-function upsert(contact) {
-  const index = state.contacts.findIndex((c) => c.id === contact.id);
-  if (index === -1) state.contacts.push(contact);
-  else state.contacts[index] = contact;
+function refresh() {
+  state.today = today();
+  state.contacts = store.list().map(withSchedule);
   changed();
-  return contact;
 }
 
 export function onContactsChange(listener) {
@@ -44,21 +34,87 @@ export function findContact(prospectName, company) {
   return state.contacts.find((c) => key(c.prospectName, c.company) === key(prospectName, company));
 }
 
-export async function loadContacts() {
-  try {
-    Object.assign(state, await request("GET", "/api/contacts"));
-  } catch {
-    // An older server without contacts: the Draft view still works.
-  }
-  changed();
+/** Industry names for the CSV export, from /api/industries. */
+export function setIndustryLabels(labels) {
+  industryLabels = labels;
 }
 
-export async function saveContact(prospect, drafts) {
-  return upsert(await request("POST", "/api/contacts", { ...prospect, drafts }));
+function download(name, type, text) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = el("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function showListError(message) {
+  const box = document.getElementById("contacts-error");
+  box.textContent = message;
+  box.hidden = !message;
+}
+
+document.getElementById("export-csv").addEventListener("click", () => {
+  download(`sdr-contacts-${today()}.csv`, "text/csv", contactsCsv(store.list(), industryLabels));
+});
+document.getElementById("backup-contacts").addEventListener("click", () => {
+  download(`sdr-contacts-backup-${today()}.json`, "application/json", store.backup());
+});
+document.getElementById("restore-contacts").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (!file) return;
+  try {
+    const added = store.importContacts(JSON.parse(await file.text()).contacts ?? []);
+    showListError("");
+    refresh();
+    document.getElementById("due-summary").textContent = `Restored ${added} contact${added === 1 ? "" : "s"} from ${file.name}.`;
+  } catch (error) {
+    showListError(error instanceof SyntaxError ? `${file.name} isn't an SDR Outreach backup.` : error.message);
+  }
+});
+
+export async function loadContacts() {
+  refresh();
+  // Ask the browser not to clear this site's storage when space runs low.
+  navigator.storage?.persist?.().catch(() => {});
+  await importLegacyContacts();
+}
+
+// Another tab saved or changed a contact.
+window.addEventListener("storage", (event) => {
+  if (event.key !== null && event.key !== "sdr-outreach:contacts") return;
+  store.reload();
+  refresh();
+});
+
+/**
+ * Contacts used to be saved in data/contacts.json by the app's server. When the app runs on your own computer
+ * and that file exists, copy it into this browser once.
+ */
+async function importLegacyContacts() {
+  if (state.contacts.length > 0) return;
+  try {
+    const response = await fetch("/api/legacy-contacts");
+    if (!response.ok) return;
+    const added = store.importContacts((await response.json()).contacts ?? []);
+    if (added) refresh();
+  } catch {
+    // No old file, or a hosted copy of the app: nothing to bring over.
+  }
+}
+
+/** cadence is the industry's follow-up sequence, from the drafts response. */
+export async function saveContact(prospect, drafts, cadence) {
+  const { contact } = store.save(prospect, drafts, cadence);
+  refresh();
+  return getContact(contact.id);
 }
 
 export async function updateContact(id, changes) {
-  return upsert(await request("PATCH", `/api/contacts/${id}`, changes));
+  store.update(id, changes);
+  refresh();
+  return getContact(id);
 }
 
 export function dueCount() {
@@ -320,10 +376,9 @@ function renderDetail() {
       return;
     }
     try {
-      await request("DELETE", `/api/contacts/${contact.id}`);
-      state.contacts = state.contacts.filter((c) => c.id !== contact.id);
+      store.delete(contact.id);
       selectedId = null;
-      changed();
+      refresh();
     } catch (error) {
       detailError.textContent = error.message;
       detailError.hidden = false;

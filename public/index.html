@@ -15,6 +15,7 @@
     <nav class="views" aria-label="Views">
       <button type="button" data-view="draft" aria-current="page">Draft</button>
       <button type="button" data-view="contacts">Contacts <span class="badge" id="due-badge" hidden></span></button>
+      <button type="button" data-view="model">Model settings <span class="model-dot" id="model-dot" aria-hidden="true"></span></button>
     </nav>
     <label class="toggle" title="Show tips and explanations for each channel">
       <input type="checkbox" id="guide-mode" checked>
@@ -132,7 +133,7 @@
       <section id="loading" class="panel empty" hidden>
         <div class="spinner" aria-hidden="true"></div>
         <h2>Drafting your outreach...</h2>
-        <p class="muted">This takes a few seconds with Claude and up to a minute with a local model.</p>
+        <p class="muted" id="loading-model">This takes a few seconds with Claude and up to a few minutes with a local model.</p>
       </section>
 
       <section id="results" hidden>
@@ -217,9 +218,11 @@
     <section class="panel contacts-list-panel">
       <div class="contacts-head">
         <h2>Contacts</h2>
-        <a class="button secondary" href="/api/contacts.csv" download id="export-csv">Export CSV</a>
+        <button type="button" class="secondary" id="export-csv">Export CSV</button>
       </div>
       <p class="muted" data-guide>Everyone you save from the Draft view, sorted by who to follow up with first. Export to CSV to import into HubSpot, Salesforce or a spreadsheet.</p>
+      <p class="muted storage-note">Saved only in this browser, on this device. Nobody else can see them, and clearing your browser data deletes them, so <button type="button" class="link-button" id="backup-contacts">download a backup</button> now and then. <label class="link-button" id="restore-label">Restore a backup<input type="file" id="restore-contacts" accept=".json,application/json" hidden></label></p>
+      <p class="error" id="contacts-error" role="alert" hidden></p>
       <div class="row filters">
         <label>Search
           <input type="search" id="contact-search" placeholder="Name or company">
@@ -239,6 +242,73 @@
     <section class="panel contact-detail" id="contact-detail" aria-live="polite">
       <p class="muted empty-detail">Pick a contact to see their drafts and follow-ups.</p>
     </section>
+  </div>
+
+  <div class="model-layout" id="model-view" hidden>
+    <form class="panel model-panel" id="model-form" autocomplete="off" novalidate>
+      <h2>Model settings</h2>
+      <p class="muted">Choose which AI writes your drafts. These settings are saved only in this browser.</p>
+
+      <fieldset class="choices">
+        <legend>Where should the AI run?</legend>
+        <label class="choice">
+          <input type="radio" name="provider" value="claude">
+          <span><strong>Claude (Anthropic API)</strong><small>Best quality. Needs an Anthropic API key, and each set of drafts costs a few cents.</small></span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="provider" value="lmstudio">
+          <span><strong>LM Studio (local, free)</strong><small>Runs a model on your own computer. Free and private, but you need to install LM Studio first.</small></span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="provider" value="ollama">
+          <span><strong>Ollama (local, free)</strong><small>Runs a model on your own computer. Free and private, but you need to install Ollama first.</small></span>
+        </label>
+      </fieldset>
+
+      <div id="claude-settings">
+        <label>Anthropic API key
+          <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" spellcheck="false">
+          <small>Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a>. Usage is billed to your Anthropic account. <span id="server-key-note"></span></small>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="remember-key">
+          <span>Remember my key on this device<small>Off by default: your key is forgotten when you close this tab. Don't turn this on for a shared or public computer.</small></span>
+        </label>
+        <div class="callout">
+          <h4>Your key and your privacy</h4>
+          <p>Your key goes straight from this browser to Anthropic. It never passes through SDR Outreach's server, and nothing logs or keeps it. This page can only talk to Anthropic and to model servers on your own computer, and it loads no outside scripts that could read your key. Use a key with a spending limit, and delete it at console.anthropic.com if you ever think it's been exposed.</p>
+        </div>
+        <label class="check callout">
+          <input type="checkbox" id="budget-mode">
+          <span><strong>Budget mode</strong><small>Drafts with Claude Haiku (claude-haiku-5-5), the cheapest model. A set of drafts costs about a tenth of a cent, compared with about 3 to 8 cents on Claude Opus (claude-opus-5-5). The tradeoff is quality: Haiku is fast and fine for simple prospects, but the openers can be more generic and miss details from the website or your file. Costs are rough estimates; your Anthropic account shows the real charges.</small></span>
+        </label>
+      </div>
+
+      <div id="local-settings">
+        <label>Server address
+          <input id="server-url" inputmode="url" spellcheck="false">
+          <small id="server-url-help"></small>
+        </label>
+
+        <div class="callout">
+          <label>Which model fits my computer?
+            <select id="hardware"></select>
+          </label>
+          <div id="recommendation"></div>
+        </div>
+
+        <label>Model
+          <input id="model-name" list="model-options" spellcheck="false" autocapitalize="off">
+          <datalist id="model-options"></datalist>
+          <small id="model-help"></small>
+        </label>
+      </div>
+
+      <div class="test-row">
+        <button type="button" class="primary" id="test-connection">Test connection</button>
+        <p id="connection-status" role="status"></p>
+      </div>
+    </form>
   </div>
 
   <script src="app.js" type="module"></script>
