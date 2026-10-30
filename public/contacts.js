@@ -185,6 +185,16 @@ function followUpText(contact) {
   return { text: `${due.text} · ${contact.nextFollowUp.channel ?? "Follow up"}`, state: due.state };
 }
 
+/** "ML" for Maria Lopez, shown in the contact's avatar. */
+function initials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("");
+}
+
 function renderList() {
   const contacts = visibleContacts();
   document.getElementById("contacts-empty").hidden = state.contacts.length > 0;
@@ -207,7 +217,7 @@ function renderList() {
       const who = el("span", "who");
       who.append(el("strong", "", contact.prospectName), el("span", "muted", [contact.prospectTitle, contact.company].filter(Boolean).join(" at ")));
       const next = followUpText(contact);
-      button.append(who, el("span", `next ${next.state}`, next.text));
+      button.append(el("span", "avatar", initials(contact.prospectName)), who, el("span", `next ${next.state}`, next.text));
       button.addEventListener("click", () => showContact(contact.id));
       item.append(button);
       return item;
@@ -278,8 +288,10 @@ function renderDetail() {
   const focused = document.activeElement?.name;
 
   const header = el("div", "detail-head");
-  const title = el("div");
-  title.append(el("h2", "", contact.prospectName), el("p", "muted", [contact.prospectTitle, contact.company].filter(Boolean).join(" at ")));
+  const title = el("div", "detail-title");
+  const name = el("div");
+  title.append(el("span", "avatar large", initials(contact.prospectName)), name);
+  name.append(el("h2", "", contact.prospectName), el("p", "muted", [contact.prospectTitle, contact.company].filter(Boolean).join(" at ")));
   const again = el("button", "secondary", "Write new drafts");
   again.type = "button";
   again.addEventListener("click", () => draftAgain(contact));
